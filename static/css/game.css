@@ -1,0 +1,24 @@
+.circle {
+    border-radius: 100%;
+    height: 100px;
+}
+
+.red{
+    background-color: red;
+}
+
+.hover-red:hover{
+    background-color: red;
+}
+
+.yellow{
+    background-color:yellow;
+}
+
+.hover-yellow:hover{
+    background-color:yellow
+}
+
+.grey{
+    background-color: grey;
+}
