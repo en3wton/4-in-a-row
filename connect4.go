@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -60,7 +58,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("failed to upgrade connection")
+		w.WriteHeader(http.StatusBadRequest)
 	}
 
 	// if game found, player joins it
@@ -70,10 +68,11 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			g.registerPlayer(ws)
 			return
 		} else {
-			msg := "Game Full."
+			tmpGame := newGame("")
+			msg := info{*tmpGame, "Game Full.", false, 0}
 			ws.WriteJSON(msg)
 			ws.Close()
-			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 	} else {
 		// if game not found then it is created
@@ -81,29 +80,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		games[gameID] = g
 
 		g.registerPlayer(ws)
-		go g.playGame()
 		return
 	}
-
-	w.WriteHeader(http.StatusInternalServerError)
 }
 
 // initializes a game
 func (g *game) playGame() {
-	g.Turn = 0
-
-	// wait for players
-	for len(g.Players) < 2 {
-		log.Println("waiting for players, current players: " + strconv.Itoa(len(g.Players)))
-		for i, player := range g.Players {
-
-			msg := info{*g, "Waiting for Players...", false, i}
-			player.WriteJSON(msg)
-		}
-		time.Sleep(1000 * time.Millisecond)
-	}
-
-	for g.getWinner() == -1 {
+	for {
 		playerIndex := g.Turn % 2
 		currentPlayer := g.Players[playerIndex]
 		opponentIndex := (g.Turn + 1) % 2
@@ -122,6 +105,7 @@ func (g *game) playGame() {
 		err = opponent.WriteJSON(msg)
 		if err != nil {
 			g.forfeit(opponentIndex)
+			return
 		}
 
 		var move playerMove
@@ -131,64 +115,202 @@ func (g *game) playGame() {
 			return
 		}
 
-		if !g.isValidMove(move) {
+		x, y := move.toCoordinates()
+		if !g.isValidMove(x, y) {
+			// no cheating
 			g.forfeit(playerIndex)
 			return
 		}
 
-		// do move
+		// execute move
+		g.Grid[y][x] = playerIndex
+
+		// check for game over
+		if g.isWinningMove(x, y) {
+			msg := info{*g, "You Win!", false, playerIndex}
+			currentPlayer.WriteJSON(msg)
+
+			msg = info{*g, "You Lose.", false, opponentIndex}
+			opponent.WriteJSON(msg)
+
+			g.endGame()
+			return
+		}
+
+		if g.boardIsFull() {
+			// notify of draw
+			msg := info{*g, "Draw.", false, -1}
+			currentPlayer.WriteJSON(msg)
+			opponent.WriteJSON(msg)
+
+			g.endGame()
+			return
+		}
 
 		// next turn
 		g.Turn++
 	}
-
-	winnerIndex := g.getWinner()
-	winner := g.Players[winnerIndex]
-	loserIndex := (winnerIndex + 1) % 2
-	loser := g.Players[loserIndex]
-
-	msg := info{*g, "You Won!", false, winnerIndex}
-	winner.WriteJSON(msg)
-
-	msg = info{*g, "You lose.", false, loserIndex}
-	loser.WriteJSON(msg)
-
-	for _, player := range g.Players {
-		player.Close()
-	}
-
-	delete(games, g.GameID)
 }
 
 // Players[playerIndex] loses the game and opponent is notified
 func (g *game) forfeit(playerIndex int) {
 	loser := g.Players[playerIndex]
-	msg := info{*g, "Error, you have forfeit the game.", false, playerIndex}
+	msg := info{*g, "Error, You have been disconnected.", false, playerIndex}
 	loser.WriteJSON(msg)
 	loser.Close()
 
 	opponentIndex := (playerIndex + 1) % 2
 	opponent := g.Players[opponentIndex]
-	msg = info{*g, "Opponent has forfeit.", false, opponentIndex}
+	msg = info{*g, "Opponent has disconnected.", false, opponentIndex}
 	opponent.WriteJSON(msg)
 	opponent.Close()
 
 	delete(games, g.GameID)
 }
 
-// isValidMove returns true if the move is valid
-func (g game) isValidMove(move playerMove) bool {
+func (g *game) isWinningMove(x int, y int) bool {
+	playerIndex := g.Grid[y][x]
+	var consecutive int
+
+	// check horizontal
+	consecutive = 0
+	for i := 0; i < len(g.Grid[0]); i++ {
+		if g.Grid[y][i] == playerIndex {
+			consecutive++
+			if consecutive == 4 {
+				return true
+			}
+		} else {
+			consecutive = 0
+		}
+	}
+
+	// check vertical
+	consecutive = 0
+	for i := 0; i < len(g.Grid); i++ {
+		if g.Grid[i][x] == playerIndex {
+			consecutive++
+			if consecutive == 4 {
+				return true
+			}
+		} else {
+			consecutive = 0
+		}
+	}
+
+	// check diagonal top-left to bottom-right
+	consecutive = 0
+
+	tmpX := x
+	tmpY := y
+	for tmpX > 0 && tmpY > 0 {
+		tmpX--
+		tmpY--
+	}
+
+	for tmpX < len(g.Grid[0]) && tmpY < len(g.Grid) {
+		if g.Grid[tmpY][tmpX] == playerIndex {
+			consecutive++
+			if consecutive == 4 {
+				return true
+			}
+		} else {
+			consecutive = 0
+		}
+		tmpX++
+		tmpY++
+	}
+
+	// check diagonal bottom-left to top-right
+	consecutive = 0
+
+	tmpX = x
+	tmpY = y
+	for tmpX < len(g.Grid[0])-1 && tmpY > 0 {
+		tmpX++
+		tmpY--
+	}
+
+	for tmpX >= 0 && tmpY < len(g.Grid) {
+		if g.Grid[tmpY][tmpX] == playerIndex {
+			consecutive++
+			if consecutive == 4 {
+				return true
+			}
+		} else {
+			consecutive = 0
+		}
+		tmpX--
+		tmpY++
+	}
+
+	return false
+}
+
+func (g *game) boardIsFull() bool {
+	for i := 0; i < len(g.Grid); i++ {
+		for j := 0; j < len(g.Grid[0]); j++ {
+			if g.Grid[i][j] == -1 {
+				return false
+			}
+		}
+	}
 	return true
 }
 
-// getWinner returns the winner of the game, -1 if not yet won
-func (g game) getWinner() int {
-	return -1
+func (g *game) endGame() {
+	for _, player := range g.Players {
+		player.Close()
+	}
+	delete(games, g.GameID)
+}
+
+// isValidMove returns true if the move is valid
+func (g *game) isValidMove(x int, y int) bool {
+
+	// out of bounds
+	if y >= len(g.Grid) || x >= len(g.Grid[0]) {
+		return false
+	}
+
+	// slot is not empty
+	if g.Grid[y][x] != -1 {
+		return false
+	}
+
+	// slot below is empty
+	if y < len(g.Grid)-1 {
+		if g.Grid[y+1][x] == -1 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m playerMove) toCoordinates() (x int, y int) {
+	x = m.Placement % gameWidth
+	y = m.Placement / gameWidth
+
+	return
 }
 
 // registerPlayer adds a player to a game
 func (g *game) registerPlayer(c *websocket.Conn) {
 	g.Players = append(g.Players, c)
+
+	if len(g.Players) == 2 {
+		go g.playGame()
+	} else {
+		for i, player := range g.Players {
+			msg := info{*g, "Waiting for an opponent.", false, i}
+			err := player.WriteJSON(msg)
+			if err != nil {
+				g.forfeit(i)
+			}
+		}
+	}
+
 }
 
 // newGame creates a new game object with the specified gameID

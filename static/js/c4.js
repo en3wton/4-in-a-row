@@ -11,8 +11,7 @@ window.onload = function () {
         // set global variables
         playerIndex = msg.playerIndex;
         playerTurn = msg.playerTurn;
-        boardHeight = msg.game.grid.length;
-        boardWidth = msg.game.grid[0].length;
+        grid = msg.game.grid;
 
         drawBoard(msg.game.grid);
     }
@@ -22,10 +21,14 @@ window.onload = function () {
     }
 }
 
+// makes a move at the selected slot if valid.
 function selectSlot(x, y) {
-    if(playerTurn){
-        if(isValidMove(x,y)){
-            placement = (x + (y * boardWidth));
+    if (playerTurn) {
+        if (isValidMove(x, y)) {
+            p = (x + (y * grid[0].length));
+            var playerMove = {placement:p}
+            ws.send(JSON.stringify(playerMove))
+
             return true;
         }
     }
@@ -33,9 +36,26 @@ function selectSlot(x, y) {
 }
 
 // returns true if the move is valid
-function isValidMove(x,y){
-    // for testing
-    return true;
+function isValidMove(x, y) {
+
+    // out of bounds
+    if (y >= grid.length || x >= grid[0].length) {
+        return false;
+    }
+
+    // slot is not empty
+    if (grid[y][x] != -1) {
+        return false;
+    }
+
+    // slot below is empty
+    if (y < grid.length - 1) {
+        if (grid[y + 1][x] == -1) {
+            return false
+        }
+    }
+
+    return true
 }
 
 // draws the game board
@@ -54,17 +74,17 @@ function drawBoard(grid) {
             var col = document.createElement("div");
 
             col.className = "col m-1 circle";
-            
-            if(grid[i][j] == 0){
+
+            if (grid[i][j] == 0) {
                 col.classList.add("red");
-            }else if(grid[i][j] == 1){
+            } else if (grid[i][j] == 1) {
                 col.classList.add("yellow");
-            }else{
+            } else {
                 col.classList.add("grey");
 
-                if(playerIndex == 0){
+                if (playerIndex == 0) {
                     col.classList.add("hover-red");
-                }else{
+                } else {
                     col.classList.add("hover-yellow");
                 }
             }
@@ -73,11 +93,11 @@ function drawBoard(grid) {
             col.y = i;
 
             col.addEventListener("click", function () {
-                if(selectSlot(this.x, this.y)){
+                if (selectSlot(this.x, this.y)) {
                     this.classList.remove("grey")
-                    if(playerIndex == 0){
+                    if (playerIndex == 0) {
                         this.classList.add("red")
-                    }else{
+                    } else {
                         this.classList.add("yellow")
                     }
                 }

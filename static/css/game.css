@@ -1,24 +1,42 @@
+body{
+    background-image: url("/static/images/bg.png");
+}
+
+#board-container {
+    background-color:#0D3B66;
+    border-radius: 5%;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+}
+
+#page-title {
+    font-family: 'Bitter', serif;
+}
+
+.container {
+    background-color:white;
+}
+
 .circle {
     border-radius: 100%;
-    height: 100px;
+    height: 80px;
 }
 
 .red{
-    background-color: red;
+    background-color: #F95738;
 }
 
 .hover-red:hover{
-    background-color: red;
+    background-color: rgb(255, 141, 118);
 }
 
 .yellow{
-    background-color:yellow;
+    background-color:#F4D35E;
 }
 
 .hover-yellow:hover{
-    background-color:yellow
+    background-color:rgb(255, 231, 144);
 }
 
 .grey{
-    background-color: grey;
+    background-color: white;
 }
