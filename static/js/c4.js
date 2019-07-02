@@ -67,6 +67,7 @@ function drawBoard(grid) {
 
     var row = document.createElement("div");
     row.classList.add("row");
+    row.classList.add("no-gutters")
 
     board.appendChild(row);
 
@@ -74,27 +75,29 @@ function drawBoard(grid) {
 
         for (j = 0; j < grid[0].length; j++) {
             var col = document.createElement("div");
+            col.className = "col m-2";
 
-            col.className = "col m-1 circle";
+            var circle = document.createElement("div")
+            circle.classList.add("circle")
 
             if (grid[i][j] == 0) {
-                col.classList.add("red");
+                circle.classList.add("red");
             } else if (grid[i][j] == 1) {
-                col.classList.add("yellow");
+                circle.classList.add("yellow");
             } else {
-                col.classList.add("grey");
+                circle.classList.add("grey");
 
                 if (playerIndex == 0) {
-                    col.classList.add("hover-red");
+                    circle.classList.add("hover-red");
                 } else {
-                    col.classList.add("hover-yellow");
+                    circle.classList.add("hover-yellow");
                 }
             }
 
-            col.x = j;
-            col.y = i;
+            circle.x = j;
+            circle.y = i;
 
-            col.addEventListener("click", function () {
+            circle.addEventListener("click", function () {
                 if (selectSlot(this.x, this.y)) {
                     this.classList.remove("grey")
                     if (playerIndex == 0) {
@@ -105,6 +108,7 @@ function drawBoard(grid) {
                 }
             });
 
+            col.appendChild(circle)
             row.appendChild(col);
         }
 
