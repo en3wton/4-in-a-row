@@ -1,8 +1,14 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -34,6 +40,7 @@ var games = make(map[string]*game)
 func main() {
 	http.HandleFunc("/", gameHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	http.HandleFunc("/create/", gameCreateHandler)
 	http.HandleFunc("/ws", wsHandler)
 
 	log.Println("Starting on port 8292")
@@ -49,6 +56,25 @@ func gameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func gameCreateHandler(w http.ResponseWriter, r *http.Request) {
+	h := sha1.New()
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for {
+		h.Write([]byte(strconv.Itoa(rnd.Int())))
+		gameID := strings.ToLower(hex.EncodeToString(h.Sum(nil))[:6])
+
+		_, exists := games[gameID]
+		if !exists {
+			g := newGame(gameID)
+			games[gameID] = g
+			go g.timeout()
+
+			http.Redirect(w, r, "/"+gameID, 302)
+			return
+		}
+	}
+}
+
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
 	gameID := args.Get("gameid")
@@ -59,6 +85,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	// if game found, player joins it
@@ -75,11 +102,10 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		// if game not found then it is created
-		g = newGame(gameID)
-		games[gameID] = g
-
-		g.registerPlayer(ws)
+		tmpGame := newGame("")
+		msg := info{*tmpGame, "Lobby does not exist.", false, 0}
+		ws.WriteJSON(msg)
+		ws.Close()
 		return
 	}
 }
@@ -311,6 +337,24 @@ func (g *game) registerPlayer(c *websocket.Conn) {
 		}
 	}
 
+}
+
+// timeout deletes the game if no one joins within 30 seconds.
+// if the game has not started after 5 minutes the game is deleted.
+func (g *game) timeout() {
+	time.Sleep(30 * time.Second)
+	if len(g.Players) == 0 {
+		g.endGame()
+	} else if len(g.Players) < 2 {
+		time.Sleep(5 * time.Minute)
+		if len(g.Players) < 2 {
+			for _, player := range g.Players {
+				msg := info{*g, "Lobby has timed out.", false, -1}
+				player.WriteJSON(msg)
+			}
+			g.endGame()
+		}
+	}
 }
 
 // newGame creates a new game object with the specified gameID

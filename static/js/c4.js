@@ -1,4 +1,6 @@
 window.onload = function () {
+    document.getElementById("link-text").innerHTML = window.location
+
     ws = new WebSocket("ws://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
 
     ws.onmessage = function (event) {

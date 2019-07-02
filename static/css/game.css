@@ -12,6 +12,10 @@ body{
     font-family: 'Bitter', serif;
 }
 
+#link-text{
+    background-color:#e8f3ff;
+}
+
 .container {
     background-color:white;
 }
