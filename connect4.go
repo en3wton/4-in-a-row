@@ -56,9 +56,12 @@ func gameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// gameCreateHandler creates a game and redirects the user to it.
 func gameCreateHandler(w http.ResponseWriter, r *http.Request) {
 	h := sha1.New()
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// create gameID, loop until it is unique.
 	for {
 		h.Write([]byte(strconv.Itoa(rnd.Int())))
 		gameID := strings.ToLower(hex.EncodeToString(h.Sum(nil))[:6])
@@ -75,6 +78,7 @@ func gameCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// wsHandler handles websocket connections and puts them in the right game.
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	args := r.URL.Query()
 	gameID := args.Get("gameid")
@@ -110,7 +114,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// initializes a game
+// playGame starts the game loop.
 func (g *game) playGame() {
 	for {
 		playerIndex := g.Turn % 2
@@ -178,7 +182,7 @@ func (g *game) playGame() {
 	}
 }
 
-// Players[playerIndex] loses the game and opponent is notified
+// forfeit notifies player[playerIndex] that they have lost, and their opponnent that they have won
 func (g *game) forfeit(playerIndex int) {
 	loser := g.Players[playerIndex]
 	msg := info{*g, "Error, You have been disconnected.", false, playerIndex}
@@ -273,6 +277,7 @@ func (g *game) isWinningMove(x int, y int) bool {
 	return false
 }
 
+// boardIsFull checks if the board is full
 func (g *game) boardIsFull() bool {
 	for i := 0; i < len(g.Grid); i++ {
 		for j := 0; j < len(g.Grid[0]); j++ {
@@ -284,6 +289,7 @@ func (g *game) boardIsFull() bool {
 	return true
 }
 
+// endGame disconnects players and removes the game from the map.
 func (g *game) endGame() {
 	for _, player := range g.Players {
 		player.Close()
@@ -314,6 +320,7 @@ func (g *game) isValidMove(x int, y int) bool {
 	return true
 }
 
+// toCoordinates converts a slot index into a set of coordinates on the grid.
 func (m playerMove) toCoordinates() (x int, y int) {
 	x = m.Placement % gameWidth
 	y = m.Placement / gameWidth
