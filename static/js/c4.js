@@ -16,11 +16,18 @@ window.onload = function () {
         playerIndex = msg.playerIndex;
         playerTurn = msg.playerTurn;
         grid = msg.game.grid;
+        isOver = msg.game.isOver
 
         drawBoard(msg.game.grid);
     }
 
-    ws.onerror = function () {
+    ws.onclose = function (event) {
+        if(!isOver){
+            document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
+        }
+    }
+
+    ws.onerror = function (event) {
         document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
     }
 }

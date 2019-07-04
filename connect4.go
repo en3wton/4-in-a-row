@@ -22,6 +22,7 @@ type game struct {
 	Turn       int                        `json:"turn"`
 	GameID     string                     `json:"gameId"`
 	NumPlayers int                        `json:"numPlayers"`
+	IsOver     bool                       `json:"isOver"`
 }
 
 type info struct {
@@ -116,6 +117,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			tmpGame := newGame("", -1)
+			tmpGame.IsOver = true
 			msg := info{*tmpGame, "Game Full.", false, 0}
 			ws.WriteJSON(msg)
 			ws.Close()
@@ -123,6 +125,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		tmpGame := newGame("", -1)
+		tmpGame.IsOver = true
 		msg := info{*tmpGame, "Lobby does not exist.", false, 0}
 		ws.WriteJSON(msg)
 		ws.Close()
@@ -175,6 +178,8 @@ func (g *game) playGame() {
 
 		// check for game over
 		if g.isWinningMove(x, y) {
+			g.IsOver = true
+
 			msg := info{*g, "You Win!", false, playerIndex}
 			currentPlayer.WriteJSON(msg)
 
@@ -190,6 +195,8 @@ func (g *game) playGame() {
 		}
 
 		if g.boardIsFull() {
+			g.IsOver = true
+
 			// notify of draw
 			for i, player := range g.Players {
 				msg = info{*g, "Draw.", false, i}
@@ -207,6 +214,7 @@ func (g *game) playGame() {
 
 // forfeit notifies player[playerIndex] that they have lost, and their opponnent that they have won
 func (g *game) forfeit(playerIndex int) {
+	g.IsOver = true
 	loser := g.Players[playerIndex]
 	msg := info{*g, "Error, You have been disconnected.", false, playerIndex}
 	loser.WriteJSON(msg)
@@ -407,5 +415,5 @@ func newGame(gameID string, numPlayers int) *game {
 		}
 	}
 
-	return &game{players, grid, turn, gameID, numPlayers}
+	return &game{players, grid, turn, gameID, numPlayers, false}
 }
