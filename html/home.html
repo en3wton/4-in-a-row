@@ -22,9 +22,22 @@
         <h1 class="mb-5" id="page-title"><strong>Connect 4.</strong></h1>
 
         <p>Welcome to Connect 4 online.</p>
-        <p>To play: <br>  - click create lobby, then share the link with a friend.</p>
+        <p>To play: <br> - Select the number of players. <br> - Click create lobby. <br> - Share the link with a friend.
+        </p>
 
-        <a class="btn btn-primary mt-2" href="/create" role="button">Create Lobby</a>
+        <form action="/create">
+            <div class="form-group">
+                <label for="numberOfPlayers">Example select</label>
+                <select class="form-control" id="numberOfPlayers" name="players">
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Lobby</button>
+        </form>
     </div>
     </div>
 </body>

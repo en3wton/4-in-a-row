@@ -1,4 +1,4 @@
-colors = ["red","yellow","blue","pink","black","orange"]
+colors = ["red", "yellow", "blue", "pink", "orange", "black"]
 
 window.onload = function () {
     // update link box with current page link
@@ -22,7 +22,7 @@ window.onload = function () {
     }
 
     ws.onclose = function (event) {
-        if(!isOver){
+        if (!isOver) {
             document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
         }
     }
@@ -37,7 +37,7 @@ function selectSlot(x, y) {
     if (playerTurn) {
         if (isValidMove(x, y)) {
             p = (x + (y * grid[0].length));
-            var playerMove = {placement:p}
+            var playerMove = { placement: p }
             ws.send(JSON.stringify(playerMove))
 
             return true;
@@ -92,7 +92,7 @@ function drawBoard(grid) {
             if (grid[i][j] == -1) {
                 circle.classList.add("grey")
                 circle.classList.add("hover-" + colors[playerIndex])
-            }else{
+            } else {
                 circle.classList.add(colors[grid[i][j]])
             }
 
