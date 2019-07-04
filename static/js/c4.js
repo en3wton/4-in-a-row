@@ -1,11 +1,12 @@
+colors = ["red","yellow","blue","pink","black","orange"]
+
 window.onload = function () {
     // update link box with current page link
     document.getElementById("link-text").innerHTML = window.location
 
-    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
+    ws = new WebSocket("ws://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
 
     ws.onmessage = function (event) {
-        console.log(event)
         var msg = JSON.parse(event.data);
 
         // update message box
@@ -19,8 +20,8 @@ window.onload = function () {
         drawBoard(msg.game.grid);
     }
 
-    ws.onopen = function () {
-        console.log("socket opened");
+    ws.onerror = function () {
+        document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
     }
 }
 
@@ -81,18 +82,11 @@ function drawBoard(grid) {
             var circle = document.createElement("div")
             circle.classList.add("circle")
 
-            if (grid[i][j] == 0) {
-                circle.classList.add("red");
-            } else if (grid[i][j] == 1) {
-                circle.classList.add("yellow");
-            } else {
-                circle.classList.add("grey");
-
-                if (playerIndex == 0) {
-                    circle.classList.add("hover-red");
-                } else {
-                    circle.classList.add("hover-yellow");
-                }
+            if (grid[i][j] == -1) {
+                circle.classList.add("grey")
+                circle.classList.add("hover-" + colors[playerIndex])
+            }else{
+                circle.classList.add(colors[grid[i][j]])
             }
 
             circle.x = j;
@@ -101,11 +95,7 @@ function drawBoard(grid) {
             circle.addEventListener("click", function () {
                 if (selectSlot(this.x, this.y)) {
                     this.classList.remove("grey")
-                    if (playerIndex == 0) {
-                        this.classList.add("red")
-                    } else {
-                        this.classList.add("yellow")
-                    }
+                    this.classList.add(colors[playerIndex])
                 }
             });
 

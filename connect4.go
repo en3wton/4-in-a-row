@@ -17,10 +17,11 @@ const gameWidth = 7
 const gameHeight = 6
 
 type game struct {
-	Players []*websocket.Conn          `json:"-"`
-	Grid    [gameHeight][gameWidth]int `json:"grid"`
-	Turn    int                        `json:"turn"`
-	GameID  string                     `json:"gameId"`
+	Players    []*websocket.Conn          `json:"-"`
+	Grid       [gameHeight][gameWidth]int `json:"grid"`
+	Turn       int                        `json:"turn"`
+	GameID     string                     `json:"gameId"`
+	NumPlayers int                        `json:"numPlayers"`
 }
 
 type info struct {
@@ -40,7 +41,7 @@ var games = make(map[string]*game)
 func main() {
 	http.HandleFunc("/", gameHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	http.HandleFunc("/create/", gameCreateHandler)
+	http.HandleFunc("/create", gameCreateHandler)
 	http.HandleFunc("/ws", wsHandler)
 
 	log.Println("Starting on port 8292")
@@ -58,6 +59,20 @@ func gameHandler(w http.ResponseWriter, r *http.Request) {
 
 // gameCreateHandler creates a game and redirects the user to it.
 func gameCreateHandler(w http.ResponseWriter, r *http.Request) {
+	args := r.URL.Query()
+	numPlayersString := args.Get("players")
+
+	var numPlayers int
+	if numPlayersString != "" {
+		var err error
+		numPlayers, err = strconv.Atoi(numPlayersString)
+		if err != nil {
+			numPlayers = 2
+		}
+	} else {
+		numPlayers = 2
+	}
+
 	h := sha1.New()
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -68,11 +83,11 @@ func gameCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, exists := games[gameID]
 		if !exists {
-			g := newGame(gameID)
+			g := newGame(gameID, numPlayers)
 			games[gameID] = g
 			go g.timeout()
 
-			http.Redirect(w, r, "/"+gameID, 302)
+			http.Redirect(w, r, "/"+gameID, 303)
 			return
 		}
 	}
@@ -84,6 +99,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	gameID := args.Get("gameid")
 	if gameID == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -95,18 +111,18 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	// if game found, player joins it
 	g, ok := games[gameID]
 	if ok {
-		if len(g.Players) < 2 {
+		if len(g.Players) < g.NumPlayers {
 			g.registerPlayer(ws)
 			return
 		} else {
-			tmpGame := newGame("")
+			tmpGame := newGame("", -1)
 			msg := info{*tmpGame, "Game Full.", false, 0}
 			ws.WriteJSON(msg)
 			ws.Close()
 			return
 		}
 	} else {
-		tmpGame := newGame("")
+		tmpGame := newGame("", -1)
 		msg := info{*tmpGame, "Lobby does not exist.", false, 0}
 		ws.WriteJSON(msg)
 		ws.Close()
@@ -117,10 +133,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 // playGame starts the game loop.
 func (g *game) playGame() {
 	for {
-		playerIndex := g.Turn % 2
+		playerIndex := g.Turn % g.NumPlayers
 		currentPlayer := g.Players[playerIndex]
-		opponentIndex := (g.Turn + 1) % 2
-		opponent := g.Players[opponentIndex]
 
 		// notify player its their turn.
 		msg := info{*g, "Your Turn.", true, playerIndex}
@@ -130,12 +144,16 @@ func (g *game) playGame() {
 			return
 		}
 
-		// notify other player its their opponents turn
-		msg = info{*g, "Opponents Turn.", false, opponentIndex}
-		err = opponent.WriteJSON(msg)
-		if err != nil {
-			g.forfeit(opponentIndex)
-			return
+		// notify other players its their opponents turn
+		for i, player := range g.Players {
+			if player != currentPlayer {
+				msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + "'s turn.", false, i}
+				err = player.WriteJSON(msg)
+				if err != nil {
+					g.forfeit(i)
+					return
+				}
+			}
 		}
 
 		var move playerMove
@@ -160,8 +178,12 @@ func (g *game) playGame() {
 			msg := info{*g, "You Win!", false, playerIndex}
 			currentPlayer.WriteJSON(msg)
 
-			msg = info{*g, "You Lose.", false, opponentIndex}
-			opponent.WriteJSON(msg)
+			for i, player := range g.Players {
+				if player != currentPlayer {
+					msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + " wins.", false, i}
+					player.WriteJSON(msg)
+				}
+			}
 
 			g.endGame()
 			return
@@ -169,9 +191,10 @@ func (g *game) playGame() {
 
 		if g.boardIsFull() {
 			// notify of draw
-			msg := info{*g, "Draw.", false, -1}
-			currentPlayer.WriteJSON(msg)
-			opponent.WriteJSON(msg)
+			for i, player := range g.Players {
+				msg = info{*g, "Draw.", false, i}
+				player.WriteJSON(msg)
+			}
 
 			g.endGame()
 			return
@@ -189,11 +212,11 @@ func (g *game) forfeit(playerIndex int) {
 	loser.WriteJSON(msg)
 	loser.Close()
 
-	opponentIndex := (playerIndex + 1) % 2
-	opponent := g.Players[opponentIndex]
-	msg = info{*g, "Opponent has disconnected.", false, opponentIndex}
-	opponent.WriteJSON(msg)
-	opponent.Close()
+	for i, player := range g.Players {
+		msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + " has disconnected, game over.", false, i}
+		player.WriteJSON(msg)
+		player.Close()
+	}
 
 	delete(games, g.GameID)
 }
@@ -332,18 +355,27 @@ func (m playerMove) toCoordinates() (x int, y int) {
 func (g *game) registerPlayer(c *websocket.Conn) {
 	g.Players = append(g.Players, c)
 
-	if len(g.Players) == 2 {
-		go g.playGame()
-	} else {
+	repeat := true
+	for repeat {
+		repeat = false
+
+		numMissing := g.NumPlayers - len(g.Players)
 		for i, player := range g.Players {
-			msg := info{*g, "Waiting for an opponent.", false, i}
+			log.Println("oof")
+			msg := info{*g, "Waiting for " + strconv.Itoa(numMissing) + " more player(s) to join.", false, i}
 			err := player.WriteJSON(msg)
 			if err != nil {
-				g.forfeit(i)
+				// remove player that has left
+				log.Println("removed player")
+				g.Players = append(g.Players[:i], g.Players[i+1:]...)
+				repeat = true
 			}
 		}
 	}
 
+	if len(g.Players) == g.NumPlayers {
+		go g.playGame()
+	}
 }
 
 // timeout deletes the game if no one joins within 30 seconds.
@@ -352,9 +384,9 @@ func (g *game) timeout() {
 	time.Sleep(30 * time.Second)
 	if len(g.Players) == 0 {
 		g.endGame()
-	} else if len(g.Players) < 2 {
+	} else if len(g.Players) < g.NumPlayers {
 		time.Sleep(5 * time.Minute)
-		if len(g.Players) < 2 {
+		if len(g.Players) < g.NumPlayers {
 			for _, player := range g.Players {
 				msg := info{*g, "Lobby has timed out.", false, -1}
 				player.WriteJSON(msg)
@@ -365,7 +397,7 @@ func (g *game) timeout() {
 }
 
 // newGame creates a new game object with the specified gameID
-func newGame(gameID string) *game {
+func newGame(gameID string, numPlayers int) *game {
 	var players []*websocket.Conn
 	var grid [gameHeight][gameWidth]int
 	turn := 0
@@ -377,5 +409,5 @@ func newGame(gameID string) *game {
 		}
 	}
 
-	return &game{players, grid, turn, gameID}
+	return &game{players, grid, turn, gameID, numPlayers}
 }

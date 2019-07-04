@@ -25,6 +25,10 @@ body{
     padding-bottom: 100%;
 }
 
+.grey{
+    background-color: white;
+}
+
 .red{
     background-color: #F95738;
 }
@@ -41,6 +45,34 @@ body{
     background-color:rgb(255, 231, 144);
 }
 
-.grey{
-    background-color: white;
+.blue{
+    background-color:rgb(94, 202, 244);
+}
+
+.hover-blue:hover{
+    background-color:rgb(175, 232, 255);
+}
+
+.pink{
+    background-color:rgb(244, 94, 224);
+}
+
+.hover-pink:hover{
+    background-color:rgb(255, 183, 245);
+}
+
+.black{
+    background-color:black;
+}
+
+.hover-black:hover{
+    background-color:rgb(150, 150, 150);
+}
+
+.orange{
+    background-color:rgb(244, 149, 94);
+}
+
+.hover-orange:hover{
+    background-color:rgb(255, 210, 184);
 }
