@@ -4,7 +4,7 @@ window.onload = function () {
     // update link box with current page link
     document.getElementById("link-text").innerHTML = window.location
 
-    ws = new WebSocket("ws://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
+    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
 
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
