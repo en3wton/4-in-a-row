@@ -393,6 +393,7 @@ func (g *game) timeout() {
 	} else if len(g.Players) < g.NumPlayers {
 		time.Sleep(5 * time.Minute)
 		if len(g.Players) < g.NumPlayers {
+			g.IsOver = true
 			for _, player := range g.Players {
 				msg := info{*g, "Lobby has timed out.", false, -1}
 				player.WriteJSON(msg)
