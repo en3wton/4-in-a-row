@@ -423,20 +423,17 @@ func (g *game) registerPlayer(c *websocket.Conn, name string) {
 	}
 }
 
-// timeout deletes the game if no one joins within 30 seconds.
-// if the game has not started after 5 minutes the game is deleted.
+// timeout prevents the websockets from timing out.
 func (g *game) timeout() {
-	time.Sleep(30 * time.Second)
-	if len(g.Players) == 0 {
-		g.endGame()
-	} else if len(g.Players) < g.NumPlayers {
-		time.Sleep(5 * time.Minute)
-		if len(g.Players) < g.NumPlayers {
-			g.IsOver = true
-			for _, player := range g.Players {
-				msg := info{*g, "Lobby has timed out.", false, -1}
-				player.Socket.WriteJSON(msg)
+	for !g.IsOver {
+		time.Sleep(30 * time.Second)
+		for i, player := range g.Players {
+			err := player.Socket.WriteJSON("")
+			if err != nil {
+				g.Players = append(g.Players[:i], g.Players[i+1:]...)
 			}
+		}
+		if len(g.Players) == 0 {
 			g.endGame()
 		}
 	}

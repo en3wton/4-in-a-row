@@ -10,7 +10,7 @@ window.onload = function () {
         playAgain();
     });
 
-    var options = {backdrop: "static", keyboard: false}
+    var options = { backdrop: "static", keyboard: false }
     $('#playerNameModal').modal(options);
 
     document.getElementById("playerNameInputButton").addEventListener("click", function () {
@@ -18,7 +18,7 @@ window.onload = function () {
         if (playerName != "") {
             $('#playerNameModal').modal('hide');
             connectToGame(playerName)
-        }else{
+        } else {
             document.getElementById("playerNameModalMessage").innerHTML = "<strong>Please enter a valid username.</strong>"
         }
     })
@@ -31,24 +31,27 @@ function connectToGame(playerName) {
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
 
-        // update message box
-        document.getElementById("message-box").innerText = msg.message;
+        // check message is not emtpy
+        if (msg.hasOwnProperty("message")) {
+            // update message box
+            document.getElementById("message-box").innerText = msg.message;
 
-        // set global variables
-        playerIndex = msg.playerIndex;
-        playerTurn = msg.playerTurn;
-        grid = msg.game.grid;
-        isOver = msg.game.isOver;
-        turn = msg.game.turn;
+            // set global variables
+            playerIndex = msg.playerIndex;
+            playerTurn = msg.playerTurn;
+            grid = msg.game.grid;
+            isOver = msg.game.isOver;
+            turn = msg.game.turn;
 
-        drawBoard(grid);
+            drawBoard(grid);
 
-        var players = msg.game.players
-        drawPlayerList(players)
+            var players = msg.game.players
+            drawPlayerList(players)
 
-        // prompt to play again after game ends
-        if (isOver && playerIndex != -1) {
-            $('#playAgainModal').modal();
+            // prompt to play again after game ends
+            if (isOver && playerIndex != -1) {
+                $('#playAgainModal').modal();
+            }
         }
     }
 
@@ -160,16 +163,16 @@ function drawBoard(grid) {
     boardContainer.appendChild(board);
 }
 
-function drawPlayerList(players){
+function drawPlayerList(players) {
     var playerListContainer = document.getElementById("player-list-container")
     var playerList = document.createElement("ul");
     playerList.classList.add("list-group");
 
-    for(var i = 0; i < players.length; i++){
+    for (var i = 0; i < players.length; i++) {
         var listItem = document.createElement("li");
         listItem.classList.add("list-group-item");
         listItem.innerText = players[i].name;
-        if(i == turn % players.length){
+        if (i == turn % players.length) {
             listItem.classList.add("active");
         }
         playerList.appendChild(listItem);
