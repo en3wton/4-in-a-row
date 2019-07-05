@@ -26,7 +26,7 @@ window.onload = function () {
 
 function connectToGame(playerName) {
     // create websocket connection
-    ws = new WebSocket("ws://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1) + "&name=" + playerName);
+    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1) + "&name=" + playerName);
 
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
