@@ -408,7 +408,7 @@ func (g *game) registerPlayer(c *websocket.Conn, name string) {
 
 		numMissing := g.NumPlayers - len(g.Players)
 		for i, player := range g.Players {
-			msg := info{*g, "Waiting for " + strconv.Itoa(numMissing) + " more player(s) to join.", false, i}
+			msg := info{*g, "Waiting for " + strconv.Itoa(numMissing) + " more player(s) to join.", false, -1}
 			err := player.Socket.WriteJSON(msg)
 			if err != nil {
 				// remove player that has left

@@ -26,7 +26,7 @@ window.onload = function () {
 
 function connectToGame(playerName) {
     // create websocket connection
-    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1) + "&name=" + playerName);
+    ws = new WebSocket("ws://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1) + "&name=" + playerName);
 
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
@@ -39,8 +39,12 @@ function connectToGame(playerName) {
         playerTurn = msg.playerTurn;
         grid = msg.game.grid;
         isOver = msg.game.isOver;
+        turn = msg.game.turn;
 
-        drawBoard(msg.game.grid);
+        drawBoard(grid);
+
+        var players = msg.game.players
+        drawPlayerList(players)
 
         // prompt to play again after game ends
         if (isOver && playerIndex != -1) {
@@ -154,4 +158,22 @@ function drawBoard(grid) {
 
     boardContainer.innerHTML = "";
     boardContainer.appendChild(board);
+}
+
+function drawPlayerList(players){
+    var playerListContainer = document.getElementById("player-list-container")
+    var playerList = document.createElement("ul");
+    playerList.classList.add("list-group");
+
+    for(var i = 0; i < players.length; i++){
+        var listItem = document.createElement("li");
+        listItem.classList.add("list-group-item");
+        listItem.innerText = players[i].name;
+        if(i == turn % players.length){
+            listItem.classList.add("active");
+        }
+        playerList.appendChild(listItem);
+    }
+    playerListContainer.innerHTML = "";
+    playerListContainer.appendChild(playerList);
 }
