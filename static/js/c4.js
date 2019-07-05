@@ -4,14 +4,35 @@ window.onload = function () {
     // update link box with current page link
     document.getElementById("link-text").innerHTML = window.location;
 
+    // make play again button play again
+    document.getElementById("playAgainButton").addEventListener("click", function () {
+        $('#playAgainModal').modal('hide');
+        playAgain();
+    });
+
+    var options = {backdrop: "static", keyboard: false}
+    $('#playerNameModal').modal(options);
+
+    document.getElementById("playerNameInputButton").addEventListener("click", function () {
+        var playerName = document.getElementById("playerNameInput").value.trim()
+        if (playerName != "") {
+            $('#playerNameModal').modal('hide');
+            connectToGame(playerName)
+        }else{
+            document.getElementById("playerNameModalMessage").innerHTML = "<strong>Please enter a valid username.</strong>"
+        }
+    })
+}
+
+function connectToGame(playerName) {
     // create websocket connection
-    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1));
+    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1) + "&name=" + playerName);
 
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
 
         // update message box
-        document.getElementById("message-box").innerHTML = msg.message;
+        document.getElementById("message-box").innerText = msg.message;
 
         // set global variables
         playerIndex = msg.playerIndex;
@@ -22,7 +43,7 @@ window.onload = function () {
         drawBoard(msg.game.grid);
 
         // prompt to play again after game ends
-        if(isOver && playerIndex != -1){
+        if (isOver && playerIndex != -1) {
             $('#playAgainModal').modal();
         }
     }
@@ -38,16 +59,10 @@ window.onload = function () {
     ws.onerror = function (event) {
         document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
     }
-
-    // make play again button play again
-    document.getElementById("playAgainButton").addEventListener("click", function(){
-        $('#playAgainModal').modal('hide');
-        playAgain();
-    });
 }
 
-function playAgain(){
-    var playerMove = {placement: -1, playAgain: true};
+function playAgain() {
+    var playerMove = { placement: -1, playAgain: true };
     ws.send(JSON.stringify(playerMove));
 }
 

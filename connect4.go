@@ -17,12 +17,17 @@ const gameWidth = 7
 const gameHeight = 6
 
 type game struct {
-	Players    []*websocket.Conn          `json:"-"`
+	Players    []player                   `json:"players"`
 	Grid       [gameHeight][gameWidth]int `json:"grid"`
 	Turn       int                        `json:"turn"`
 	GameID     string                     `json:"gameId"`
 	NumPlayers int                        `json:"numPlayers"`
 	IsOver     bool                       `json:"isOver"`
+}
+
+type player struct {
+	Name   string          `json:"name"`
+	Socket *websocket.Conn `json:"-"`
 }
 
 type info struct {
@@ -104,6 +109,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	name := args.Get("name")
+	if name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -114,7 +125,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	g, ok := games[gameID]
 	if ok {
 		if len(g.Players) < g.NumPlayers {
-			g.registerPlayer(ws)
+			g.registerPlayer(ws, name)
 			return
 		} else {
 			tmpGame := newGame("", -1)
@@ -142,7 +153,7 @@ func (g *game) playGame() {
 
 		// notify player its their turn.
 		msg := info{*g, "Your Turn.", true, playerIndex}
-		err := currentPlayer.WriteJSON(msg)
+		err := currentPlayer.Socket.WriteJSON(msg)
 		if err != nil {
 			g.forfeit(playerIndex)
 			return
@@ -151,8 +162,8 @@ func (g *game) playGame() {
 		// notify other players its their opponents turn
 		for i, player := range g.Players {
 			if player != currentPlayer {
-				msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + "'s turn.", false, i}
-				err = player.WriteJSON(msg)
+				msg = info{*g, currentPlayer.Name + "'s turn.", false, i}
+				err = player.Socket.WriteJSON(msg)
 				if err != nil {
 					g.forfeit(i)
 					return
@@ -161,7 +172,7 @@ func (g *game) playGame() {
 		}
 
 		var move playerMove
-		err = currentPlayer.ReadJSON(&move)
+		err = currentPlayer.Socket.ReadJSON(&move)
 		if err != nil {
 			g.forfeit(playerIndex)
 			return
@@ -182,12 +193,12 @@ func (g *game) playGame() {
 			g.IsOver = true
 
 			msg := info{*g, "You Win!", false, playerIndex}
-			currentPlayer.WriteJSON(msg)
+			currentPlayer.Socket.WriteJSON(msg)
 
 			for i, player := range g.Players {
 				if player != currentPlayer {
-					msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + " wins.", false, i}
-					player.WriteJSON(msg)
+					msg = info{*g, currentPlayer.Name + " wins.", false, i}
+					player.Socket.WriteJSON(msg)
 				}
 			}
 
@@ -201,7 +212,7 @@ func (g *game) playGame() {
 			// notify of draw
 			for i, player := range g.Players {
 				msg = info{*g, "Draw.", false, i}
-				player.WriteJSON(msg)
+				player.Socket.WriteJSON(msg)
 			}
 
 			g.playAgain()
@@ -217,25 +228,25 @@ func (g *game) playGame() {
 func (g *game) playAgain() {
 	delete(games, g.GameID)
 
-	for _, player := range g.Players {
-		go func(c *websocket.Conn, gameID string) {
+	for _, p := range g.Players {
+		go func(p player, gameID string) {
 			var move playerMove
-			c.ReadJSON(&move)
+			p.Socket.ReadJSON(&move)
 			if move.PlayAgain {
 				game, exists := games[gameID]
 				if exists {
-					game.registerPlayer(c)
+					game.registerPlayer(p.Socket, p.Name)
 				} else {
 					game := newGame(gameID, g.NumPlayers)
 					games[gameID] = game
 					go g.timeout()
 
-					game.registerPlayer(c)
+					game.registerPlayer(p.Socket, p.Name)
 				}
 			} else {
-				c.Close()
+				p.Socket.Close()
 			}
-		}(player, g.GameID)
+		}(p, g.GameID)
 	}
 }
 
@@ -244,12 +255,12 @@ func (g *game) forfeit(playerIndex int) {
 	g.IsOver = true
 	loser := g.Players[playerIndex]
 	msg := info{*g, "Error, You have been disconnected.", false, playerIndex}
-	loser.WriteJSON(msg)
-	loser.Close()
+	loser.Socket.WriteJSON(msg)
+	loser.Socket.Close()
 
 	for i, player := range g.Players {
-		msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + " has disconnected, game over.", false, i}
-		player.WriteJSON(msg)
+		msg = info{*g, loser.Name + " has disconnected, game over.", false, i}
+		player.Socket.WriteJSON(msg)
 	}
 
 	g.playAgain()
@@ -350,7 +361,7 @@ func (g *game) boardIsFull() bool {
 // endGame disconnects players and removes the game from the map.
 func (g *game) endGame() {
 	for _, player := range g.Players {
-		player.Close()
+		player.Socket.Close()
 	}
 	delete(games, g.GameID)
 }
@@ -387,8 +398,9 @@ func (m playerMove) toCoordinates() (x int, y int) {
 }
 
 // registerPlayer adds a player to a game
-func (g *game) registerPlayer(c *websocket.Conn) {
-	g.Players = append(g.Players, c)
+func (g *game) registerPlayer(c *websocket.Conn, name string) {
+	p := player{name, c}
+	g.Players = append(g.Players, p)
 
 	repeat := true
 	for repeat {
@@ -397,7 +409,7 @@ func (g *game) registerPlayer(c *websocket.Conn) {
 		numMissing := g.NumPlayers - len(g.Players)
 		for i, player := range g.Players {
 			msg := info{*g, "Waiting for " + strconv.Itoa(numMissing) + " more player(s) to join.", false, i}
-			err := player.WriteJSON(msg)
+			err := player.Socket.WriteJSON(msg)
 			if err != nil {
 				// remove player that has left
 				g.Players = append(g.Players[:i], g.Players[i+1:]...)
@@ -423,7 +435,7 @@ func (g *game) timeout() {
 			g.IsOver = true
 			for _, player := range g.Players {
 				msg := info{*g, "Lobby has timed out.", false, -1}
-				player.WriteJSON(msg)
+				player.Socket.WriteJSON(msg)
 			}
 			g.endGame()
 		}
@@ -432,7 +444,7 @@ func (g *game) timeout() {
 
 // newGame creates a new game object with the specified gameID
 func newGame(gameID string, numPlayers int) *game {
-	var players []*websocket.Conn
+	var players []player
 	var grid [gameHeight][gameWidth]int
 	turn := 0
 

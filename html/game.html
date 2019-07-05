@@ -34,9 +34,30 @@
 
     </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="playAgainModal" tabindex="-1" role="dialog"
-        aria-labelledby="playAgainModalTitle" aria-hidden="true">
+    <!-- player name modal -->
+    <div class="modal fade" id="playerNameModal" tabindex="-1" role="dialog" aria-labelledby="playerNameModalTitle"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="playerNameModalTitle">Joining Game...</h5>
+                </div>
+                <div class="modal-body">
+                    <p id="playerNameModalMessage">To join the game please pick a username:</p>
+                    <div class="form-group">
+                        <input type="email" class="form-control" id="playerNameInput" placeholder="Enter Name Here.">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="playerNameInputButton">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Play Again Modal -->
+    <div class="modal fade" id="playAgainModal" tabindex="-1" role="dialog" aria-labelledby="playAgainModalTitle"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
