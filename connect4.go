@@ -33,7 +33,8 @@ type info struct {
 }
 
 type playerMove struct {
-	Placement int `json:"placement"`
+	Placement int  `json:"placement"`
+	PlayAgain bool `json:"playAgain"`
 }
 
 var upgrader = websocket.Upgrader{}
@@ -118,7 +119,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			tmpGame := newGame("", -1)
 			tmpGame.IsOver = true
-			msg := info{*tmpGame, "Game Full.", false, 0}
+			msg := info{*tmpGame, "Game Full.", false, -1}
 			ws.WriteJSON(msg)
 			ws.Close()
 			return
@@ -126,7 +127,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		tmpGame := newGame("", -1)
 		tmpGame.IsOver = true
-		msg := info{*tmpGame, "Lobby does not exist.", false, 0}
+		msg := info{*tmpGame, "Lobby does not exist.", false, -1}
 		ws.WriteJSON(msg)
 		ws.Close()
 		return
@@ -190,7 +191,7 @@ func (g *game) playGame() {
 				}
 			}
 
-			g.endGame()
+			g.playAgain()
 			return
 		}
 
@@ -203,12 +204,38 @@ func (g *game) playGame() {
 				player.WriteJSON(msg)
 			}
 
-			g.endGame()
+			g.playAgain()
 			return
 		}
 
 		// next turn
 		g.Turn++
+	}
+}
+
+// playAgain handles each players play again prompt response.
+func (g *game) playAgain() {
+	delete(games, g.GameID)
+
+	for _, player := range g.Players {
+		go func(c *websocket.Conn, gameID string) {
+			var move playerMove
+			c.ReadJSON(&move)
+			if move.PlayAgain {
+				game, exists := games[gameID]
+				if exists {
+					game.registerPlayer(c)
+				} else {
+					game := newGame(gameID, g.NumPlayers)
+					games[gameID] = game
+					go g.timeout()
+
+					game.registerPlayer(c)
+				}
+			} else {
+				c.Close()
+			}
+		}(player, g.GameID)
 	}
 }
 
@@ -223,12 +250,12 @@ func (g *game) forfeit(playerIndex int) {
 	for i, player := range g.Players {
 		msg = info{*g, "Player " + strconv.Itoa(playerIndex+1) + " has disconnected, game over.", false, i}
 		player.WriteJSON(msg)
-		player.Close()
 	}
 
-	delete(games, g.GameID)
+	g.playAgain()
 }
 
+// isWinningMove returns true if the move at the specified coordinates resulted in a win for the player.
 func (g *game) isWinningMove(x int, y int) bool {
 	playerIndex := g.Grid[y][x]
 	var consecutive int

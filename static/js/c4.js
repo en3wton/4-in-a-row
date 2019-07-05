@@ -1,10 +1,11 @@
-colors = ["red", "yellow", "blue", "pink", "orange", "black"]
+colors = ["red", "yellow", "blue", "pink", "orange", "black"];
 
 window.onload = function () {
     // update link box with current page link
-    document.getElementById("link-text").innerHTML = window.location
+    document.getElementById("link-text").innerHTML = window.location;
 
-    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1))
+    // create websocket connection
+    ws = new WebSocket("wss://" + window.location.host + "/ws?gameid=" + window.location.pathname.substr(1));
 
     ws.onmessage = function (event) {
         var msg = JSON.parse(event.data);
@@ -16,20 +17,38 @@ window.onload = function () {
         playerIndex = msg.playerIndex;
         playerTurn = msg.playerTurn;
         grid = msg.game.grid;
-        isOver = msg.game.isOver
+        isOver = msg.game.isOver;
 
         drawBoard(msg.game.grid);
+
+        // prompt to play again after game ends
+        if(isOver && playerIndex != -1){
+            $('#playAgainModal').modal();
+        }
     }
 
+    // shows an error if the websocket is terminated unexpectedly 
     ws.onclose = function (event) {
         if (!isOver) {
             document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
         }
     }
 
+    // shows an error if there is a websocket error
     ws.onerror = function (event) {
         document.getElementById("message-box").innerHTML = "Error: connection has been terminated.";
     }
+
+    // make play again button play again
+    document.getElementById("playAgainButton").addEventListener("click", function(){
+        $('#playAgainModal').modal('hide');
+        playAgain();
+    });
+}
+
+function playAgain(){
+    var playerMove = {placement: -1, playAgain: true};
+    ws.send(JSON.stringify(playerMove));
 }
 
 // makes a move at the selected slot if valid.
@@ -37,13 +56,13 @@ function selectSlot(x, y) {
     if (playerTurn) {
         if (isValidMove(x, y)) {
             p = (x + (y * grid[0].length));
-            var playerMove = { placement: p }
-            ws.send(JSON.stringify(playerMove))
+            var playerMove = { placement: p };
+            ws.send(JSON.stringify(playerMove));
 
             return true;
         }
     }
-    return false
+    return false;
 }
 
 // returns true if the move is valid
@@ -62,11 +81,11 @@ function isValidMove(x, y) {
     // slot below is empty
     if (y < grid.length - 1) {
         if (grid[y + 1][x] == -1) {
-            return false
+            return false;
         }
     }
 
-    return true
+    return true;
 }
 
 // draws the game board
@@ -76,7 +95,7 @@ function drawBoard(grid) {
 
     var row = document.createElement("div");
     row.classList.add("row");
-    row.classList.add("no-gutters")
+    row.classList.add("no-gutters");
 
     board.appendChild(row);
 
@@ -86,14 +105,14 @@ function drawBoard(grid) {
             var col = document.createElement("div");
             col.className = "col m-2";
 
-            var circle = document.createElement("div")
-            circle.classList.add("circle")
+            var circle = document.createElement("div");
+            circle.classList.add("circle");
 
             if (grid[i][j] == -1) {
-                circle.classList.add("grey")
-                circle.classList.add("hover-" + colors[playerIndex])
+                circle.classList.add("grey");
+                circle.classList.add("hover-" + colors[playerIndex]);
             } else {
-                circle.classList.add(colors[grid[i][j]])
+                circle.classList.add(colors[grid[i][j]]);
             }
 
             circle.x = j;
@@ -101,12 +120,12 @@ function drawBoard(grid) {
 
             circle.addEventListener("click", function () {
                 if (selectSlot(this.x, this.y)) {
-                    this.classList.remove("grey")
-                    this.classList.add(colors[playerIndex])
+                    this.classList.remove("grey");
+                    this.classList.add(colors[playerIndex]);
                 }
             });
 
-            col.appendChild(circle)
+            col.appendChild(circle);
             row.appendChild(col);
         }
 
@@ -118,6 +137,6 @@ function drawBoard(grid) {
         }
     }
 
-    boardContainer.innerHTML = ""
+    boardContainer.innerHTML = "";
     boardContainer.appendChild(board);
 }
