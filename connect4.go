@@ -412,7 +412,11 @@ func (g *game) registerPlayer(c *websocket.Conn, name string) {
 			err := player.Socket.WriteJSON(msg)
 			if err != nil {
 				// remove player that has left
-				g.Players = append(g.Players[:i], g.Players[i+1:]...)
+				if len(g.Players) > 1 {
+					g.Players = append(g.Players[:i], g.Players[i+1:]...)
+				} else {
+					g.Players = g.Players[:0]
+				}
 				repeat = true
 			}
 		}
@@ -430,7 +434,11 @@ func (g *game) timeout() {
 		for i, player := range g.Players {
 			err := player.Socket.WriteJSON("")
 			if err != nil {
-				g.Players = append(g.Players[:i], g.Players[i+1:]...)
+				if len(g.Players) > 1 {
+					g.Players = append(g.Players[:i], g.Players[i+1:]...)
+				} else {
+					g.Players = g.Players[:0]
+				}
 			}
 		}
 		if len(g.Players) == 0 {
