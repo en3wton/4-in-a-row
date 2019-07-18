@@ -4,7 +4,7 @@ Uses websockets.
 
 Can play with  2-6 players, though any more than 2 usually ends in a draw. Grid size customisation could fix this, but I haven't added it.
 
-**This is designed to work behind a reverse proxy serving https, if you want to use it standalone or over http then you must change `wss:` to `ws:` in static/js/c4.js**
+**This is designed to work behind a reverse proxy serving https, if you want to use it standalone or over http then you must change `wss://` to `ws://` in static/js/c4.js**
 
 If used behind a reverse proxy you will get websocket errors unless you add the correct headers for location /ws.
 Here is my config for nginx:
