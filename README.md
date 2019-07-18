@@ -1,18 +1,10 @@
 # 4-in-a-row
-**Online in-browser multiplayer 4 in a row. Backend written in Go. Frontend in JavaScript.**
+**Online in-browser multiplayer 4 in a row. Backend written in Go. Frontend in JavaScript.**  
 Uses websockets.
 
-Can play with  2-6 players, though any more than 2 usually ends in a draw. 
-This could be improved by adding grid size customisation.
+Can play with  2-6 players, though any more than 2 usually ends in a draw. Grid size customisation could fix this, but I haven't added it.
 
-To run:
- - Clone repo.
- - Run `go get -d connect4`
- - Run `go run connect4/connect4.go`
-
-## Docker
-You must build the binary before building the container.
-Port 8292 in the container needs to be published.
+**This is designed to work behind a reverse proxy serving https, if you want to use it standalone or over http then you must change `wss:` to `ws:` in static/js/c4.js**
 
 If used behind a reverse proxy you will get websocket errors unless you add the correct headers for location /ws.
 Here is my config for nginx:
@@ -32,3 +24,7 @@ Here is my config for nginx:
                   proxy_set_header Connection "upgrade";
         }
 Should be easy for apache also. 
+
+## Docker
+You must build the binary before building the container.
+Port 8292 in the container needs to be published.
