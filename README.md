@@ -2,6 +2,8 @@
 **Online in-browser multiplayer 4 in a row. Backend written in Go. Frontend in JavaScript.**  
 Uses websockets.
 
+**[Try it here.](https://connect4.n3wt.uk/)** (might not always be up.)
+
 Can play with  2-6 players, though any more than 2 usually ends in a draw. Grid size customisation could fix this, but I haven't added it.
 
 **This is designed to work behind a reverse proxy serving https, if you want to use it standalone or over http then you must change `wss://` to `ws://` in static/js/c4.js**
