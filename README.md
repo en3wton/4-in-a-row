@@ -26,5 +26,12 @@ Here is my config for nginx:
 Should be easy for apache also. 
 
 ## Docker
-You must build the binary before building the container.
-Port 8292 in the container needs to be published.
+To install:
+
+    docker run \
+    -d \
+    --name connect4 \
+    -p 8292:8292 \
+    --restart unless-stopped \
+    en3wton/connect4
+Port 8292 in the container must be published.
