@@ -125,7 +125,7 @@ function drawBoard(grid) {
 
         for (j = 0; j < grid[0].length; j++) {
             var col = document.createElement("div");
-            col.className = "col m-2";
+            col.className = "col m-xl-2 m-1";
 
             var circle = document.createElement("div");
             circle.classList.add("circle");
