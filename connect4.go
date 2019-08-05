@@ -126,14 +126,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		if len(g.Players) < g.NumPlayers {
 			g.registerPlayer(ws, name)
-			return
 		} else {
 			tmpGame := newGame("", -1)
 			tmpGame.IsOver = true
 			msg := info{*tmpGame, "Game Full.", false, -1}
 			ws.WriteJSON(msg)
 			ws.Close()
-			return
 		}
 	} else {
 		tmpGame := newGame("", -1)
@@ -141,7 +139,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		msg := info{*tmpGame, "Lobby does not exist.", false, -1}
 		ws.WriteJSON(msg)
 		ws.Close()
-		return
 	}
 }
 
@@ -360,6 +357,7 @@ func (g *game) boardIsFull() bool {
 
 // endGame disconnects players and removes the game from the map.
 func (g *game) endGame() {
+	g.IsOver = true
 	for _, player := range g.Players {
 		player.Socket.Close()
 	}
