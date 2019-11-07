@@ -14,12 +14,12 @@ window.onload = function () {
     $('#playerNameModal').modal(options);
 
     document.getElementById("playerNameInputButton").addEventListener("click", function () {
-        var playerName = document.getElementById("playerNameInput").value.trim()
+        var playerName = document.getElementById("playerNameInput").value.trim();
         if (playerName != "") {
             $('#playerNameModal').modal('hide');
-            connectToGame(playerName)
+            connectToGame(playerName);
         } else {
-            document.getElementById("playerNameModalMessage").innerHTML = "<strong>Please enter a valid username.</strong>"
+            document.getElementById("playerNameModalMessage").innerHTML = "<strong>Please enter a valid username.</strong>";
         }
     })
 }
@@ -45,8 +45,8 @@ function connectToGame(playerName) {
 
             drawBoard(grid);
 
-            var players = msg.game.players
-            drawPlayerList(players)
+            var players = msg.game.players;
+            drawPlayerList(players);
 
             // prompt to play again after game ends
             if (isOver && playerIndex != -1) {
